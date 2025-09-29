@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15
@@ -52,7 +50,7 @@ services:
 
   celery:
     build: .
-    command: celery -A demo_project worker --loglevel=info
+    command: celery -A pythonStudy worker --loglevel=info
     volumes:
       - .:/app
     environment:
@@ -71,7 +69,7 @@ services:
 
   celery-beat:
     build: .
-    command: celery -A demo_project beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A pythonStudy beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - .:/app
     environment:

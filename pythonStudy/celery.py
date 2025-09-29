@@ -3,9 +3,9 @@ from celery import Celery
 from celery.schedules import crontab
 
 # Set the default Django settings module
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'demo_project.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pythonStudy.settings')
 
-app = Celery('demo_project')
+app = Celery('pythonStudy')
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.

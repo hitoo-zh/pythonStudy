@@ -1,0 +1,451 @@
+{% extends 'base.html' %}
+
+{% block title %}文档列表 - 文档管理系统{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6 sm:px-0">
+    <!-- 页面标题和操作按钮 -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">📄 文档列表</h1>
+            <p class="text-gray-600 mt-2">管理和查看您的文档</p>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="openCreateModal()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                ➕ 新建文档
+            </button>
+            <button onclick="refreshDocuments()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+                🔄 刷新
+            </button>
+        </div>
+    </div>
+
+    <!-- 搜索和筛选 -->
+    <div class="bg-white rounded-lg shadow-sm border p-4 mb-6">
+        <div class="flex flex-col sm:flex-row gap-4">
+            <div class="flex-1">
+                <input type="text" id="searchInput" placeholder="搜索文档标题或内容..." 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <div class="flex gap-2">
+                <select id="categoryFilter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary">
+                    <option value="">所有分类</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文档列表 -->
+    <div id="documentsContainer" class="space-y-4">
+        <!-- 加载状态 -->
+        <div id="loadingState" class="text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <p class="text-gray-500 mt-2">加载中...</p>
+        </div>
+        
+        <!-- 空状态 -->
+        <div id="emptyState" class="text-center py-12 hidden">
+            <div class="text-6xl mb-4">📄</div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">暂无文档</h3>
+            <p class="text-gray-500 mb-4">开始创建您的第一个文档吧！</p>
+            <button onclick="openCreateModal()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                创建文档
+            </button>
+        </div>
+
+        <!-- 文档卡片列表 -->
+        <div id="documentsList" class="grid gap-4">
+            <!-- 文档卡片将通过JavaScript动态生成 -->
+        </div>
+    </div>
+
+    <!-- 分页 -->
+    <div id="pagination" class="flex justify-center mt-8 hidden">
+        <nav class="flex space-x-2">
+            <button id="prevPage" class="px-3 py-2 text-gray-500 hover:text-primary disabled:opacity-50" disabled>
+                上一页
+            </button>
+            <span id="pageInfo" class="px-3 py-2 text-gray-700"></span>
+            <button id="nextPage" class="px-3 py-2 text-gray-500 hover:text-primary disabled:opacity-50" disabled>
+                下一页
+            </button>
+        </nav>
+    </div>
+</div>
+
+<!-- 新建文档模态框 -->
+<div id="createModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">创建新文档</h3>
+                <form id="createForm">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">标题</label>
+                        <input type="text" id="documentTitle" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">分类</label>
+                        <select id="documentCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary">
+                            <option value="">选择分类</option>
+                        </select>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">内容</label>
+                        <textarea id="documentContent" rows="4"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
+                            取消
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
+                            创建
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全局变量
+let documents = [];
+let categories = [];
+let currentPage = 1;
+let totalPages = 1;
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadCategories();
+    loadDocuments();
+    setupEventListeners();
+});
+
+// 设置事件监听器
+function setupEventListeners() {
+    // 搜索功能
+    document.getElementById('searchInput').addEventListener('input', debounce(searchDocuments, 300));
+    
+    // 分类筛选
+    document.getElementById('categoryFilter').addEventListener('change', loadDocuments);
+    
+    // 分页
+    document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+    document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+    
+    // 创建表单
+    document.getElementById('createForm').addEventListener('submit', submitCreateDocument);
+}
+
+// 加载分类
+async function loadCategories() {
+    try {
+        console.log('开始加载分类...');
+        const response = await fetch('/api/documents/categories/');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('分类数据:', data);
+        
+        // 处理API响应数据
+        if (data.results) {
+            categories = data.results;
+        } else if (Array.isArray(data)) {
+            categories = data;
+        } else {
+            categories = [];
+        }
+        
+        const categoryFilter = document.getElementById('categoryFilter');
+        const documentCategory = document.getElementById('documentCategory');
+        
+        // 清空现有选项（保留默认选项）
+        categoryFilter.innerHTML = '<option value="">所有分类</option>';
+        documentCategory.innerHTML = '<option value="">选择分类</option>';
+        
+        // 添加分类选项
+        categories.forEach(category => {
+            const option1 = new Option(category.name, category.id);
+            const option2 = new Option(category.name, category.id);
+            categoryFilter.appendChild(option1);
+            documentCategory.appendChild(option2);
+        });
+        
+        console.log(`成功加载 ${categories.length} 个分类`);
+        
+    } catch (error) {
+        console.error('加载分类失败:', error);
+        // 显示错误提示
+        const categoryFilter = document.getElementById('categoryFilter');
+        const documentCategory = document.getElementById('documentCategory');
+        
+        categoryFilter.innerHTML = '<option value="">加载分类失败</option>';
+        documentCategory.innerHTML = '<option value="">加载分类失败</option>';
+    }
+}
+
+// 加载文档
+async function loadDocuments() {
+    showLoading();
+    
+    try {
+        const searchTerm = document.getElementById('searchInput').value;
+        const categoryId = document.getElementById('categoryFilter').value;
+        
+        let url = `/api/documents/documents/?page=${currentPage}`;
+      
+        if (searchTerm) {
+            url += `&search=${encodeURIComponent(searchTerm)}`;
+        }
+        if (categoryId) {
+            url += `&category=${categoryId}`;
+        }
+        
+        console.log('请求URL:', url);
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('文档数据:', data);
+        
+        // 处理API响应数据
+        if (data.results) {
+            documents = data.results;
+        } else if (Array.isArray(data)) {
+            documents = data;
+        } else {
+            documents = [];
+        }
+        
+        console.log(`成功加载 ${documents.length} 个文档`);
+        renderDocuments();
+        updatePagination(data);
+        
+    } catch (error) {
+        console.error('加载文档失败:', error);
+        showError('加载文档失败，请重试');
+    }
+}
+
+// 渲染文档列表
+function renderDocuments() {
+    const container = document.getElementById('documentsList');
+    const loadingState = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    
+    // 隐藏加载状态
+    loadingState.classList.add('hidden');
+    
+    // 检查是否有数据
+    if (!documents || documents.length === 0) {
+        emptyState.classList.remove('hidden');
+        container.innerHTML = '';
+        return;
+    }
+    
+    // 有数据时隐藏空状态
+    emptyState.classList.add('hidden');
+    
+    // 渲染文档列表
+    container.innerHTML = documents.map(doc => `
+        <div class="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+            <div class="flex justify-between items-start mb-3">
+                <h3 class="text-lg font-semibold text-gray-900">${doc.title}</h3>
+                <div class="flex space-x-2">
+                    <button onclick="deleteDocument(${doc.id})" class="text-red-600 hover:text-red-800 text-sm">
+                        删除
+                    </button>
+                </div>
+            </div>
+            <div class="text-gray-600 text-sm mb-3">
+                <span class="inline-block bg-gray-100 px-2 py-1 rounded text-xs mr-2">
+                    ${doc.category ? doc.category.name : '未分类'}
+                </span>
+                <span class="text-gray-500">
+                    作者: ${doc.author.username} | 
+                    创建: ${new Date(doc.created_at).toLocaleDateString()}
+                </span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 更新分页
+function updatePagination(data) {
+    const pagination = document.getElementById('pagination');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const pageInfo = document.getElementById('pageInfo');
+    
+    if (data.count && data.count > 10) {
+        pagination.classList.remove('hidden');
+        totalPages = Math.ceil(data.count / 10);
+        
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages;
+        
+        pageInfo.textContent = `第 ${currentPage} 页，共 ${totalPages} 页`;
+    } else {
+        pagination.classList.add('hidden');
+    }
+}
+
+// 显示加载状态
+function showLoading() {
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('documentsList').innerHTML = '';
+}
+
+// 显示错误信息
+function showError(message) {
+    alert(message);
+}
+
+// 防抖函数
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// 搜索文档
+function searchDocuments() {
+    currentPage = 1;
+    loadDocuments();
+}
+
+// 切换页面
+function changePage(direction) {
+    const newPage = currentPage + direction;
+    if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        loadDocuments();
+    }
+}
+
+// 打开创建文档模态框
+function openCreateModal() {
+    document.getElementById('createModal').classList.remove('hidden');
+}
+
+// 关闭模态框
+function closeModal() {
+    document.getElementById('createModal').classList.add('hidden');
+    document.getElementById('createForm').reset();
+}
+
+// 提交创建表单
+async function submitCreateDocument(event) {
+    if (event) event.preventDefault();
+    
+    const title = document.getElementById('documentTitle').value;
+    const content = document.getElementById('documentContent').value;
+    const categoryId = document.getElementById('documentCategory').value;
+    
+    if (!title.trim()) {
+        alert('请输入文档标题');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/documents/documents/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                category: categoryId || null
+            })
+        });
+        
+        if (response.ok) {
+            closeModal();
+            // 重置搜索和筛选条件
+            document.getElementById('searchInput').value = '';
+            document.getElementById('categoryFilter').value = '';
+            currentPage = 1;
+            loadDocuments();
+            alert('文档创建成功！');
+        } else {
+            const error = await response.json();
+            alert('创建失败: ' + (error.detail || '未知错误'));
+        }
+    } catch (error) {
+        console.error('创建文档失败:', error);
+        alert('创建文档失败，请重试');
+    }
+}
+
+// 编辑文档
+function editDocument(id) {
+    alert('编辑功能待实现');
+}
+
+// 删除文档
+async function deleteDocument(id) {
+    if (!confirm('确定要删除这个文档吗？')) return;
+    
+    try {
+        const response = await fetch(`/api/documents/documents/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        if (response.ok) {
+            loadDocuments();
+            alert('文档删除成功！');
+        } else {
+            alert('删除失败，请重试');
+        }
+    } catch (error) {
+        console.error('删除文档失败:', error);
+        alert('删除文档失败，请重试');
+    }
+}
+
+// 刷新文档
+function refreshDocuments() {
+    currentPage = 1;
+    loadDocuments();
+}
+
+// 获取CSRF Token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

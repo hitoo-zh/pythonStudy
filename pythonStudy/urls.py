@@ -16,10 +16,17 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.shortcuts import redirect
+
+def redirect_to_documents(request):
+    """重定向到文档列表页面"""
+    return redirect('/api/documents/list/')
 
 urlpatterns = [
+    path('', redirect_to_documents, name='home'),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
+    path('api/documents/', include('documents.urls')),
     path('accounts/', include('allauth.urls')),
     path('api-auth/', include('rest_framework.urls')),
 ]
