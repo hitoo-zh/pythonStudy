@@ -5,8 +5,8 @@ app_name = 'api'
 
 urlpatterns = [
     # Authentication endpoints
-    path('auth/register/', views.RegisterView.as_view(), name='register'),
     path('auth/login/', views.LoginView.as_view(), name='login'),
+    path('auth/logout/', views.user_logout, name='logout'),
     path('auth/profile/', views.ProfileView.as_view(), name='profile'),
 
     # Task endpoints

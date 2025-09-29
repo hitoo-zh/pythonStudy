@@ -30,6 +30,10 @@
                 <div class="flex items-center space-x-4">
                     <a href="/api/documents/documents/" class="text-gray-600 hover:text-primary">API文档</a>
                     <a href="/admin/" class="text-gray-600 hover:text-primary">管理后台</a>
+                    {% if user.is_authenticated %}
+                        <span class="text-gray-600">欢迎，{{ user.username }}</span>
+                        <a href="{% url 'api:logout' %}" class="text-red-600 hover:text-red-800 font-medium">退出</a>
+                    {% endif %}
                 </div>
             </div>
         </div>

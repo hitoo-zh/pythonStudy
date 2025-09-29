@@ -18,12 +18,15 @@ from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
 
-def redirect_to_documents(request):
-    """重定向到文档列表页面"""
-    return redirect('/api/documents/list/')
+def home_redirect(request):
+    """根路径重定向：未登录用户跳转到登录页面，已登录用户跳转到文档列表"""
+    if request.user.is_authenticated:
+        return redirect('/api/documents/list/')
+    else:
+        return redirect('/accounts/login/')
 
 urlpatterns = [
-    path('', redirect_to_documents, name='home'),
+    path('', home_redirect, name='home'),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('api/documents/', include('documents.urls')),

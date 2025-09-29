@@ -175,10 +175,21 @@ AUTHENTICATION_BACKENDS = [
 
 SITE_ID = 1
 
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_EMAIL_REQUIRED = False
+ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_AUTHENTICATION_METHOD = 'username'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# Login redirect URL
+LOGIN_REDIRECT_URL = '/api/documents/list/'
+
+# Logout redirect URL
+LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# Rate limiting for allauth
+ACCOUNT_RATE_LIMITS = {
+    'login': '5/m',  # 每分钟最多5次登录尝试
+}
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [

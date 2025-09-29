@@ -5,30 +5,13 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, TaskSerializer
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+from .serializers import UserSerializer, LoginSerializer, TaskSerializer
 from tasks.tasks import sample_task, send_email_task
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-
-        # Create token for the user
-        token, created = Token.objects.get_or_create(user=user)
-
-        return Response({
-            'user': UserSerializer(user).data,
-            'token': token.key
-        }, status=status.HTTP_201_CREATED)
 
 
 class LoginView(generics.GenericAPIView):
@@ -126,3 +109,9 @@ def task_status(request, task_id):
             response_data['error'] = str(result.result)
 
     return Response(response_data)
+
+
+def user_logout(request):
+    """用户登出视图"""
+    logout(request)
+    return redirect('/accounts/login/')
